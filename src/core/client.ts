@@ -39,7 +39,7 @@ export class WhatsAppClient {
       authDir: "auth_info_baileys",
       enableGroupCache: false,
       groupCacheTTL: 300,
-      ...options
+      ...options,
     };
   }
 
@@ -57,7 +57,7 @@ export class WhatsAppClient {
     this.initializeGroupCache();
     this.sock = this.createSocket();
     this.event = new EventHandler(this.sock);
-    
+
     await this.handlePairingIfNeeded();
     this.setupHandlers();
   }
@@ -73,13 +73,13 @@ export class WhatsAppClient {
 
   private createClientInstance(): WhatsAppClientInstance {
     if (!this.sock) {
-      throw new Error('Socket not initialized');
+      throw new Error("Socket not initialized");
     }
 
     const instance: WhatsAppClientInstance = {
       sock: this.sock,
       groupCache: this.groupCache,
-      disconnect: () => this.disconnect()
+      disconnect: () => this.disconnect(),
     };
 
     this.connectCallback?.(instance);
@@ -88,14 +88,14 @@ export class WhatsAppClient {
 
   private async getAuthState() {
     if (!this.options.authDir) {
-      throw new Error('Auth directory not specified');
+      throw new Error("Auth directory not specified");
     }
     return useMultiFileAuthState(this.options.authDir);
   }
 
   private createSocket(): WASocket {
     if (!this.authState) {
-      throw new Error('Auth state not initialized');
+      throw new Error("Auth state not initialized");
     }
 
     return makeWASocket({
@@ -111,7 +111,9 @@ export class WhatsAppClient {
   private async handlePairingIfNeeded(): Promise<void> {
     if (!this.options.useQR && this.options.phoneNumber && this.sock) {
       if (!this.sock.authState.creds.registered) {
-        const code = await this.sock.requestPairingCode(this.options.phoneNumber);
+        const code = await this.sock.requestPairingCode(
+          this.options.phoneNumber,
+        );
         consola.info("Pairing Code:", code);
       }
     }
@@ -138,7 +140,7 @@ export class WhatsAppClient {
 
   private setupCredentialsHandler(): void {
     if (!this.authState) {
-      throw new Error('Auth state not initialized');
+      throw new Error("Auth state not initialized");
     }
     this.event.onCredentialsUpdate(this.authState.saveCreds);
   }
