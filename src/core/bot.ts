@@ -2,6 +2,7 @@ import {
   proto,
   AnyMessageContent,
   MiscMessageGenerationOptions,
+  BaileysEventMap,
 } from "baileys";
 import { WhatsAppClient, WhatsAppClientInstance } from "./client";
 import { CommandHandler, type Command } from "./commandHandler";
@@ -28,8 +29,30 @@ export class WhatsAppBot {
   private setupClientConnection(): void {
     this.client.onConnect((instance) => {
       this.clientInstance = instance;
-      this.client.event.setupCommandHandler(this.commandHandler);
+      this.setupEventHandlers();
     });
+  }
+
+  private setupEventHandlers(): void {
+    this.setupMessageHandler();
+  }
+
+  private setupMessageHandler(): void {
+    this.client.event.onMessageUpsert(this.handleIncomingMessage.bind(this));
+  }
+
+  private async handleIncomingMessage({
+    messages,
+  }: BaileysEventMap["messages.upsert"]): Promise<void> {
+    const [message] = messages;
+    if (!this.isValidMessage(message)) return;
+    await this.commandHandler.handleMessage(message);
+  }
+
+  private isValidMessage(
+    message?: proto.IWebMessageInfo,
+  ): message is proto.IWebMessageInfo {
+    return message?.message !== null && message?.message !== undefined;
   }
 
   public command(command: Command): this {

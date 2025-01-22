@@ -31,6 +31,11 @@ export class CommandHandler {
     return this;
   }
 
+  async handleMessage(message: proto.IWebMessageInfo): Promise<void> {
+    if (!message?.message) return;
+    await this.handle(message);
+  }
+
   async handle(message: proto.IWebMessageInfo): Promise<void> {
     const messageText = this.extractMessageText(message);
     if (!messageText.startsWith(this.prefix)) return;
