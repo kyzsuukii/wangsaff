@@ -4,6 +4,9 @@ import makeWASocket, {
   AuthenticationState,
   GroupMetadata,
   WASocket,
+  AnyMessageContent,
+  MiscMessageGenerationOptions,
+  proto,
 } from "baileys";
 import { Boom } from "@hapi/boom";
 import { LRUCache } from "lru-cache";
@@ -33,6 +36,16 @@ export interface WhatsAppClientInstance {
   sock: WASocket;
   groupCache?: LRUCache<string, GroupMetadata>;
   disconnect: () => void;
+  sendMessage: (
+    jid: string,
+    content: AnyMessageContent,
+    options?: MiscMessageGenerationOptions,
+  ) => Promise<proto.WebMessageInfo | undefined>;
+  reply: (
+    message: proto.IWebMessageInfo,
+    content: AnyMessageContent,
+    options?: MiscMessageGenerationOptions,
+  ) => Promise<proto.WebMessageInfo | undefined>;
 }
 
 export class WhatsAppClient {
@@ -93,6 +106,10 @@ export class WhatsAppClient {
       sock: this.sock,
       groupCache: this.groupCache,
       disconnect: () => this.disconnect(),
+      sendMessage: (jid, content, options) =>
+        this.sendMessage(jid, content, options),
+      reply: (message, content, options) =>
+        this.reply(message, content, options),
     };
 
     this.connectCallback?.(instance);
@@ -198,5 +215,30 @@ export class WhatsAppClient {
 
   private disconnect(): void {
     this.sock?.end(undefined);
+  }
+
+  public async sendMessage(
+    jid: string,
+    content: AnyMessageContent,
+    options?: MiscMessageGenerationOptions,
+  ): Promise<proto.WebMessageInfo | undefined> {
+    if (!this.sock) {
+      throw new Error("Client is not connected");
+    }
+    return this.sock.sendMessage(jid, content, options);
+  }
+
+  public async reply(
+    message: proto.IWebMessageInfo,
+    content: AnyMessageContent,
+    options?: MiscMessageGenerationOptions,
+  ): Promise<proto.WebMessageInfo | undefined> {
+    if (!this.sock || !message.key.remoteJid) {
+      throw new Error("Client is not connected or invalid message");
+    }
+    return this.sock.sendMessage(message.key.remoteJid, content, {
+      quoted: message,
+      ...options,
+    });
   }
 }

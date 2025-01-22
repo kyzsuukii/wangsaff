@@ -45,7 +45,7 @@ export class WhatsAppBot {
     if (!this.clientInstance) {
       throw new Error("Client is not connected");
     }
-    return this.clientInstance.sock.sendMessage(jid, content, options);
+    return this.clientInstance.sendMessage(jid, content, options);
   }
 
   public async reply(
@@ -53,14 +53,10 @@ export class WhatsAppBot {
     content: AnyMessageContent,
     options?: MiscMessageGenerationOptions,
   ): Promise<proto.WebMessageInfo | undefined> {
-    if (!this.clientInstance || !message.key.remoteJid) {
-      throw new Error("Client is not connected or invalid message");
+    if (!this.clientInstance) {
+      throw new Error("Client is not connected");
     }
-    return this.clientInstance.sock.sendMessage(
-      message.key.remoteJid,
-      content,
-      { quoted: message, ...options },
-    );
+    return this.clientInstance.reply(message, content, options);
   }
 
   public disconnect(): void {

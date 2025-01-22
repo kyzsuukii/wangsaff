@@ -1,7 +1,6 @@
 import { WhatsAppBot } from "./core/bot";
 import ms from "ms";
 import { WhatsAppClient } from "./core/client";
-import consola from "consola";
 
 const client = new WhatsAppClient({
   useQR: true,
@@ -22,13 +21,15 @@ bot.command({
 });
 
 const start = async () => {
-  await client.connect();
+  const clientInstance = await client.connect();
 
-  client.event.onMessageUpsert(async ({ messages }) => {
-    for (const message of messages) {
-      if (message.message?.conversation) {
-        consola.info(message.message.conversation);
-      }
+  client.event.onGroupParticipantsUpdate(async (event) => {
+    if (event.action === "add") {
+      const welcomeText = `Welcome to the group ${event.participants.map((p) => "@" + p.split("@")[0]).join(", ")}! 👋`;
+      await clientInstance.sendMessage(event.id, {
+        text: welcomeText,
+        mentions: event.participants,
+      });
     }
   });
 };
