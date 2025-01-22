@@ -7,102 +7,72 @@ type EventHandlerType<T extends keyof BaileysEventMap> = (
 export class EventHandler {
   constructor(private readonly socket: WASocket) {}
 
+  private static createEventHandler<T extends keyof BaileysEventMap>(event: T) {
+    return function (this: EventHandler, handler: EventHandlerType<T>) {
+      this.bindEvent(event, handler);
+    };
+  }
+
   // Message Events
-  onMessageUpsert(handler: EventHandlerType<"messages.upsert">) {
-    this.bindEvent("messages.upsert", handler);
-  }
-
-  onMessageUpdate(handler: EventHandlerType<"messages.update">) {
-    this.bindEvent("messages.update", handler);
-  }
-
-  onMessageDelete(handler: EventHandlerType<"messages.delete">) {
-    this.bindEvent("messages.delete", handler);
-  }
-
-  onMessageReaction(handler: EventHandlerType<"messages.reaction">) {
-    this.bindEvent("messages.reaction", handler);
-  }
+  public onMessageUpsert = EventHandler.createEventHandler("messages.upsert");
+  public onMessageUpdate = EventHandler.createEventHandler("messages.update");
+  public onMessageDelete = EventHandler.createEventHandler("messages.delete");
+  public onMessageReaction =
+    EventHandler.createEventHandler("messages.reaction");
 
   // Group Events
-  onGroupUpdate(handler: EventHandlerType<"groups.update">) {
-    this.bindEvent("groups.update", handler);
-  }
-
-  onGroupParticipantsUpdate(
-    handler: EventHandlerType<"group-participants.update">,
-  ) {
-    this.bindEvent("group-participants.update", handler);
-  }
-
-  onGroupJoinRequest(handler: EventHandlerType<"group.join-request">) {
-    this.bindEvent("group.join-request", handler);
-  }
+  public onGroupUpdate = EventHandler.createEventHandler("groups.update");
+  public onGroupParticipantsUpdate = EventHandler.createEventHandler(
+    "group-participants.update",
+  );
+  public onGroupJoinRequest =
+    EventHandler.createEventHandler("group.join-request");
 
   // Connection Events
-  onConnectionUpdate(handler: EventHandlerType<"connection.update">) {
-    this.bindEvent("connection.update", handler);
-  }
-
-  onCredentialsUpdate(handler: EventHandlerType<"creds.update">) {
-    this.bindEvent("creds.update", handler);
-  }
+  public onConnectionUpdate =
+    EventHandler.createEventHandler("connection.update");
+  public onCredentialsUpdate = EventHandler.createEventHandler("creds.update");
 
   // Presence Events
-  onPresenceUpdate(handler: EventHandlerType<"presence.update">) {
-    this.bindEvent("presence.update", handler);
-  }
+  public onPresenceUpdate = EventHandler.createEventHandler("presence.update");
 
   // Chat Events
-  onChatsUpsert(handler: EventHandlerType<"chats.upsert">) {
-    this.bindEvent("chats.upsert", handler);
-  }
-
-  onChatsUpdate(handler: EventHandlerType<"chats.update">) {
-    this.bindEvent("chats.update", handler);
-  }
-
-  onChatsDelete(handler: EventHandlerType<"chats.delete">) {
-    this.bindEvent("chats.delete", handler);
-  }
+  public onChatsUpsert = EventHandler.createEventHandler("chats.upsert");
+  public onChatsUpdate = EventHandler.createEventHandler("chats.update");
+  public onChatsDelete = EventHandler.createEventHandler("chats.delete");
 
   // Contact Events
-  onContactsUpsert(handler: EventHandlerType<"contacts.upsert">) {
-    this.bindEvent("contacts.upsert", handler);
-  }
-
-  onContactsUpdate(handler: EventHandlerType<"contacts.update">) {
-    this.bindEvent("contacts.update", handler);
-  }
+  public onContactsUpsert = EventHandler.createEventHandler("contacts.upsert");
+  public onContactsUpdate = EventHandler.createEventHandler("contacts.update");
 
   // Call Events
-  onCall(handler: EventHandlerType<"call">) {
-    this.bindEvent("call", handler);
-  }
+  public onCall = EventHandler.createEventHandler("call");
 
   // Label Events
-  onLabelsEdit(handler: EventHandlerType<"labels.edit">) {
-    this.bindEvent("labels.edit", handler);
-  }
-
-  onLabelsAssociation(handler: EventHandlerType<"labels.association">) {
-    this.bindEvent("labels.association", handler);
-  }
+  public onLabelsEdit = EventHandler.createEventHandler("labels.edit");
+  public onLabelsAssociation =
+    EventHandler.createEventHandler("labels.association");
 
   // Generic Event Methods
-  on<T extends keyof BaileysEventMap>(event: T, handler: EventHandlerType<T>) {
+  public on<T extends keyof BaileysEventMap>(
+    event: T,
+    handler: EventHandlerType<T>,
+  ) {
     this.bindEvent(event, handler);
   }
 
-  off<T extends keyof BaileysEventMap>(event: T, handler: EventHandlerType<T>) {
+  public off<T extends keyof BaileysEventMap>(
+    event: T,
+    handler: EventHandlerType<T>,
+  ) {
     this.socket.ev.off(event, handler);
   }
 
-  removeAllListeners<T extends keyof BaileysEventMap>(event: T) {
+  public removeAllListeners<T extends keyof BaileysEventMap>(event: T) {
     this.socket.ev.removeAllListeners(event);
   }
 
-  private bindEvent<T extends keyof BaileysEventMap>(
+  protected bindEvent<T extends keyof BaileysEventMap>(
     event: T,
     handler: EventHandlerType<T>,
   ) {
