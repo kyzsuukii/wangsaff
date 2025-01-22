@@ -32,6 +32,16 @@ const start = async () => {
       });
     }
   });
+
+  client.event.onCall(async (events) => {
+    for (const event of events) {
+      if (event.status === "offer") {
+        await clientInstance.sendMessage(event.chatId, {
+          text: "Sorry, I don't accept calls. Please send a message instead. 📞❌",
+        });
+      }
+    }
+  });
 };
 
 start();
