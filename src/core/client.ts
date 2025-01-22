@@ -10,7 +10,6 @@ import makeWASocket, {
 } from "baileys";
 import { Boom } from "@hapi/boom";
 import { LRUCache } from "lru-cache";
-import consola from "consola";
 import pino from "pino";
 import { EventHandler } from "./eventHandler";
 
@@ -144,7 +143,7 @@ export class WhatsAppClient {
         const code = await this.sock.requestPairingCode(
           this.options.phoneNumber,
         );
-        consola.info("Pairing Code:", code);
+        console.info(`Pairing Code: ${code}`);
       }
     }
   }
