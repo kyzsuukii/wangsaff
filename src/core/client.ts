@@ -11,13 +11,23 @@ import consola from "consola";
 import pino from "pino";
 import { EventHandler } from "./eventHandler";
 
-export interface ConnectionOptions {
-  useQR?: boolean;
-  phoneNumber?: string;
+interface BaseConnectionOptions {
   authDir?: string;
   enableGroupCache?: boolean;
   groupCacheTTL?: number;
 }
+
+type WithQR = BaseConnectionOptions & {
+  useQR: true;
+  phoneNumber?: never;
+};
+
+type WithPhone = BaseConnectionOptions & {
+  useQR: false;
+  phoneNumber: string;
+};
+
+export type ConnectionOptions = WithQR | WithPhone;
 
 export interface WhatsAppClientInstance {
   sock: WASocket;
@@ -34,11 +44,14 @@ export class WhatsAppClient {
   public event!: EventHandler;
 
   constructor(options: ConnectionOptions) {
-    this.options = {
-      useQR: true,
+    const defaultOptions: Partial<BaseConnectionOptions> = {
       authDir: "auth_info_baileys",
       enableGroupCache: false,
       groupCacheTTL: 300,
+    };
+
+    this.options = {
+      ...defaultOptions,
       ...options,
     };
   }
