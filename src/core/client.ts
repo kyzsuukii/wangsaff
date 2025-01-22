@@ -29,7 +29,7 @@ export class WhatsAppClient {
   private sock?: WASocket;
   private groupCache?: LRUCache<string, GroupMetadata>;
   private authState?: { state: AuthenticationState; saveCreds: () => void };
-  private options: ConnectionOptions;
+  private readonly options: ConnectionOptions;
   private connectCallback?: (instance: WhatsAppClientInstance) => void;
   public event!: EventHandler;
 
@@ -43,31 +43,40 @@ export class WhatsAppClient {
     };
   }
 
-  onConnect(callback: (instance: WhatsAppClientInstance) => void) {
+  public onConnect(callback: (instance: WhatsAppClientInstance) => void): void {
     this.connectCallback = callback;
   }
 
-  async connect(): Promise<WhatsAppClientInstance> {
+  public async connect(): Promise<WhatsAppClientInstance> {
+    await this.initializeConnection();
+    return this.createClientInstance();
+  }
+
+  private async initializeConnection(): Promise<void> {
     this.authState = await this.getAuthState();
+    this.initializeGroupCache();
+    this.sock = this.createSocket();
+    this.event = new EventHandler(this.sock);
     
+    await this.handlePairingIfNeeded();
+    this.setupHandlers();
+  }
+
+  private initializeGroupCache(): void {
     if (this.options.enableGroupCache) {
       this.groupCache = new LRUCache<string, GroupMetadata>({
         ttl: this.options.groupCacheTTL! * 1000,
         ttlAutopurge: true,
       });
     }
+  }
 
-    this.sock = this.createSocket();
-    this.event = new EventHandler(this.sock);
-
-    if (!this.options.useQR && this.options.phoneNumber) {
-      const code = await this.requestPairingCode();
-      consola.info("Pairing Code:", code);
+  private createClientInstance(): WhatsAppClientInstance {
+    if (!this.sock) {
+      throw new Error('Socket not initialized');
     }
 
-    this.setupHandlers();
-
-    const instance = {
+    const instance: WhatsAppClientInstance = {
       sock: this.sock,
       groupCache: this.groupCache,
       disconnect: () => this.disconnect()
@@ -78,12 +87,19 @@ export class WhatsAppClient {
   }
 
   private async getAuthState() {
-    return useMultiFileAuthState(this.options.authDir!);
+    if (!this.options.authDir) {
+      throw new Error('Auth directory not specified');
+    }
+    return useMultiFileAuthState(this.options.authDir);
   }
 
-  private createSocket() {
+  private createSocket(): WASocket {
+    if (!this.authState) {
+      throw new Error('Auth state not initialized');
+    }
+
     return makeWASocket({
-      auth: this.authState!.state,
+      auth: this.authState.state,
       printQRInTerminal: this.options.useQR,
       logger: pino({ level: "debug" }),
       cachedGroupMetadata: this.groupCache
@@ -92,14 +108,22 @@ export class WhatsAppClient {
     });
   }
 
-  private async requestPairingCode() {
-    if (!this.sock?.authState.creds.registered) {
-      return this.sock!.requestPairingCode(this.options.phoneNumber!);
+  private async handlePairingIfNeeded(): Promise<void> {
+    if (!this.options.useQR && this.options.phoneNumber && this.sock) {
+      if (!this.sock.authState.creds.registered) {
+        const code = await this.sock.requestPairingCode(this.options.phoneNumber);
+        consola.info("Pairing Code:", code);
+      }
     }
-    throw new Error("Device is already registered.");
   }
 
-  private setupHandlers() {
+  private setupHandlers(): void {
+    this.setupConnectionHandler();
+    this.setupCredentialsHandler();
+    this.setupGroupHandlersIfNeeded();
+  }
+
+  private setupConnectionHandler(): void {
     this.event.onConnectionUpdate((update) => {
       const { connection, lastDisconnect } = update;
       if (connection === "close" && this.isBoom(lastDisconnect?.error)) {
@@ -110,30 +134,42 @@ export class WhatsAppClient {
         }
       }
     });
+  }
 
-    this.event.onCredentialsUpdate(this.authState!.saveCreds);
+  private setupCredentialsHandler(): void {
+    if (!this.authState) {
+      throw new Error('Auth state not initialized');
+    }
+    this.event.onCredentialsUpdate(this.authState.saveCreds);
+  }
 
+  private setupGroupHandlersIfNeeded(): void {
     if (this.groupCache) {
-      this.setupGroupCacheHandlers();
+      this.setupGroupHandlers();
     }
   }
 
-  private setupGroupCacheHandlers() {
+  private setupGroupHandlers(): void {
+    if (!this.sock || !this.groupCache) return;
+
     this.event.onGroupUpdate(async ([event]) => {
       if (event.id) {
-        const metadata = await this.sock!.groupMetadata(event.id);
-        if (metadata) {
-          this.groupCache!.set(event.id, metadata);
-        }
+        await this.updateGroupMetadata(event.id);
       }
     });
 
     this.event.onGroupParticipantsUpdate(async (event) => {
-      const metadata = await this.sock!.groupMetadata(event.id);
-      if (metadata) {
-        this.groupCache!.set(event.id, metadata);
-      }
+      await this.updateGroupMetadata(event.id);
     });
+  }
+
+  private async updateGroupMetadata(groupId: string): Promise<void> {
+    if (!this.sock || !this.groupCache) return;
+
+    const metadata = await this.sock.groupMetadata(groupId);
+    if (metadata) {
+      this.groupCache.set(groupId, metadata);
+    }
   }
 
   private isBoom(error: unknown): error is Boom {
@@ -145,7 +181,7 @@ export class WhatsAppClient {
     );
   }
 
-  private disconnect() {
+  private disconnect(): void {
     this.sock?.end(undefined);
   }
 }
