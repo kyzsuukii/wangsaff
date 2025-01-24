@@ -1,6 +1,5 @@
 import makeWASocket, {
   DisconnectReason,
-  useMultiFileAuthState,
   AuthenticationState,
   GroupMetadata,
   WASocket,
@@ -12,9 +11,10 @@ import { Boom } from "@hapi/boom";
 import { LRUCache } from "lru-cache";
 import pino from "pino";
 import { EventHandler } from "./eventHandler";
+import { useDatabaseAuth } from "./database/auth";
 
 interface BaseConnectionOptions {
-  authDir?: string;
+  sessionId?: string;
   enableGroupCache?: boolean;
   groupCacheTTL?: number;
 }
@@ -57,7 +57,7 @@ export class WhatsAppClient {
 
   constructor(options: ConnectionOptions) {
     const defaultOptions: Partial<BaseConnectionOptions> = {
-      authDir: "auth_info_baileys",
+      sessionId: "default_session",
       enableGroupCache: false,
       groupCacheTTL: 300,
     };
@@ -116,10 +116,11 @@ export class WhatsAppClient {
   }
 
   private async getAuthState() {
-    if (!this.options.authDir) {
-      throw new Error("Auth directory not specified");
+    if (!this.options.sessionId) {
+      throw new Error("Session ID not specified");
     }
-    return useMultiFileAuthState(this.options.authDir);
+    const auth = new useDatabaseAuth(this.options.sessionId);
+    return auth.getAuthFromDatabase();
   }
 
   private createSocket(): WASocket {
